@@ -1,13 +1,13 @@
-package helpers
+package responses
 
 import (
-	configuration "gin-api/cmd/config"
+	// configuration "gin-api/cmd/config"
 
 	"github.com/gin-gonic/gin"
 )
 
 type ResponseData struct {
-	Code    *configuration.ResponseCodeEnum
+	Code    *ResponseCodeEnum
 	Message *string
 	Data    interface{}
 }
@@ -24,7 +24,7 @@ type ResponseReturn struct {
 }
 
 func ResponseOk(c *gin.Context, data ResponseData) {
-	responseCode := configuration.ResOK
+	responseCode := ResOK
 	data.Code = &responseCode
 
 	if data.Message == nil {
@@ -36,7 +36,7 @@ func ResponseOk(c *gin.Context, data ResponseData) {
 }
 
 func ResponseTemplate(c *gin.Context, data ResponseData) {
-	responseCode := configuration.ResOK
+	responseCode := ResOK
 	var body ResposeBody
 	body.Data = data.Data
 	body.Code = responseCode.String().Code

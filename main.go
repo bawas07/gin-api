@@ -4,18 +4,24 @@ import (
 	"fmt"
 	controller "gin-api/cmd/app/controller"
 	config "gin-api/cmd/config"
-	"gin-api/cmd/helpers"
+	"gin-api/cmd/helpers/loggers"
+	"gin-api/cmd/helpers/responses"
+	"os"
 	"runtime"
 
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
+	"github.com/rs/zerolog"
 )
 
 func ErrorHandler(c *gin.Context) {
+	eLog := loggers.GetError()
 	defer func() {
 		if err := recover(); err != nil {
 			// Recovered from panic
 			fmt.Print(err)
 			fmt.Println("Recovered from panic:", err)
+			eLog.Panic().Stack().Interface("Panic Attack!", err).Msg("Panic Detected!")
 
 			// Log the stack trace
 			stack := make([]byte, 4096)
@@ -24,12 +30,12 @@ func ErrorHandler(c *gin.Context) {
 
 			// Handle the panic in your ErrorHandler or another function
 			message := fmt.Sprint(err)
-			code := config.ResPanicError
-			data := helpers.ResponseData{
+			code := responses.ResPanicError
+			data := responses.ResponseData{
 				Message: &message,
 				Code:    &code,
 			}
-			helpers.ResponseTemplate(c, data)
+			responses.ResponseTemplate(c, data)
 		}
 	}()
 	c.Next()
@@ -41,12 +47,14 @@ func ErrorHandler(c *gin.Context) {
 		stack = stack[:runtime.Stack(stack, false)]
 		fmt.Printf("Error Found:\n%s\n", message)
 		fmt.Printf("Stack Trace:\n%s\n", stack)
-		code := config.ResServerError
-		data := helpers.ResponseData{
+		eLog.Error().Stack().Err(err).Msg("Unhandled Error Detected!")
+
+		code := responses.ResServerError
+		data := responses.ResponseData{
 			Message: &message,
 			Code:    &code,
 		}
-		helpers.ResponseTemplate(c, data)
+		responses.ResponseTemplate(c, data)
 		return
 	}
 
@@ -56,27 +64,27 @@ func NoRoute(c *gin.Context) {
 	c.Next()
 
 	message := "Route not found"
-	code := config.ResNoRoute
-	data := helpers.ResponseData{
+	code := responses.ResNoRoute
+	data := responses.ResponseData{
 		Message: &message,
 		Code:    &code,
 	}
-	helpers.ResponseTemplate(c, data)
+	responses.ResponseTemplate(c, data)
 }
 
-func setupRouter() *gin.Engine {
+func setupRouter(log *zerolog.Logger) *gin.Engine {
 	// Disable Console Color
 	// gin.DisableConsoleColor()
 	r := gin.Default()
 	r.Use(gin.Recovery())
 	r.Use(ErrorHandler)
-
-	r.GET("/", controller.Hi)
+	indexController := controller.IndexController(log)
+	r.GET("/", indexController.Hi)
 
 	// Ping test
 	// loading route
 	apiRoute := r.Group("/api")
-	config.ApiRouteV1(apiRoute)
+	config.ApiRouteV1(apiRoute, log)
 
 	// Authorized group (uses gin.BasicAuth() middleware)
 	// Same than:
@@ -116,8 +124,27 @@ func setupRouter() *gin.Engine {
 	return r
 }
 
+func init() {
+	l := loggers.Get()
+
+	l.Info().Msg("App initializing")
+}
+
 func main() {
-	r := setupRouter()
+	err := godotenv.Load()
+	if err != nil {
+		fmt.Println("Error loading .env file")
+	}
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "3000"
+	}
+	l := loggers.Get()
+
+	r := setupRouter(&l)
 	// Listen and Server in 0.0.0.0:8080
-	r.Run(":8080")
+	l.Info().
+		Str("port", port).
+		Msgf("Starting App Server on port '%s'", port)
+	r.Run(":" + port)
 }
