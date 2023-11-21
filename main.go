@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"gin-api/cmd/app/controller"
 	config "gin-api/cmd/config"
+	"gin-api/cmd/helpers/datastorage"
 	"gin-api/cmd/helpers/loggers"
 	"gin-api/cmd/helpers/responses"
 	"os"
@@ -22,7 +23,7 @@ func ErrorHandler(c *gin.Context) {
 			// Recovered from panic
 			fmt.Print(err)
 			fmt.Println("Recovered from panic:", err)
-			eLog.Panic().Stack().Interface("Panic Attack!", err).Msg("Panic Detected!")
+			eLog.Panic().Stack().Msgf("Panic Detected: %s", err)
 
 			// Log the stack trace
 			stack := make([]byte, 4096)
@@ -149,9 +150,19 @@ func main() {
 	l := loggers.Get()
 	l.Info().Msgf("Logger initialized: %s", time.Since(startModuleTime))
 
+	// Load Database
+	startModuleTime = time.Now()
+	db := datastorage.GetConnection(&l)
+	l.Info().Msgf("Database initialized: %s", time.Since(startModuleTime))
+
+	// Load Repository
+	startModuleTime = time.Now()
+	repo := config.LoadRepository(&l, db)
+	l.Info().Msgf("Repository initialized: %s", time.Since(startModuleTime))
+
 	// Load Service
 	startModuleTime = time.Now()
-	s := config.LoadService(&l)
+	s := config.LoadService(&l, &repo)
 	l.Info().Msgf("Service initialized: %s", time.Since(startModuleTime))
 
 	// Load Controller

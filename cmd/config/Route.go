@@ -21,7 +21,7 @@ func ApiRouteV1(
 	// controller := LoadController(log)
 	v1.GET("/ping", controller.Index.Ping)
 
-	v1.POST("/register", controller.Auth.Register)
+	v1.GET("/register", controller.Auth.Register)
 
 	// Get user value
 	v1.GET("/user/:name", func(c *gin.Context) {
