@@ -7,3 +7,8 @@ import (
 type BaseController struct {
 	log *zerolog.Logger
 }
+
+type ControllerList struct {
+	Index *IndexController
+	Auth  *AuthController
+}

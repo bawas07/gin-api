@@ -2,12 +2,13 @@ package main
 
 import (
 	"fmt"
-	controller "gin-api/cmd/app/controller"
+	"gin-api/cmd/app/controller"
 	config "gin-api/cmd/config"
 	"gin-api/cmd/helpers/loggers"
 	"gin-api/cmd/helpers/responses"
 	"os"
 	"runtime"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -72,19 +73,20 @@ func NoRoute(c *gin.Context) {
 	responses.ResponseTemplate(c, data)
 }
 
-func setupRouter(log *zerolog.Logger) *gin.Engine {
+func setupRouter(log *zerolog.Logger, controller *controller.ControllerList) *gin.Engine {
 	// Disable Console Color
 	// gin.DisableConsoleColor()
 	r := gin.Default()
 	r.Use(gin.Recovery())
+	r.Use(loggers.RequestLogger(log))
 	r.Use(ErrorHandler)
-	indexController := controller.IndexController(log)
-	r.GET("/", indexController.Hi)
+
+	r.GET("/", controller.Index.Hi)
 
 	// Ping test
 	// loading route
 	apiRoute := r.Group("/api")
-	config.ApiRouteV1(apiRoute, log)
+	config.ApiRouteV1(apiRoute, log, controller)
 
 	// Authorized group (uses gin.BasicAuth() middleware)
 	// Same than:
@@ -131,6 +133,8 @@ func init() {
 }
 
 func main() {
+	startTime := time.Now()
+
 	err := godotenv.Load()
 	if err != nil {
 		fmt.Println("Error loading .env file")
@@ -139,11 +143,30 @@ func main() {
 	if port == "" {
 		port = "3000"
 	}
-	l := loggers.Get()
 
-	r := setupRouter(&l)
+	// Setup Logger
+	startModuleTime := time.Now()
+	l := loggers.Get()
+	l.Info().Msgf("Logger initialized: %s", time.Since(startModuleTime))
+
+	// Load Service
+	startModuleTime = time.Now()
+	s := config.LoadService(&l)
+	l.Info().Msgf("Service initialized: %s", time.Since(startModuleTime))
+
+	// Load Controller
+	startModuleTime = time.Now()
+	c := config.LoadController(&l, &s)
+	l.Info().Msgf("Controller initialized: %s", time.Since(startModuleTime))
+
+	// Load Router
+	startModuleTime = time.Now()
+	r := setupRouter(&l, &c)
+	l.Info().Msgf("Router initialized: %s", time.Since(startModuleTime))
+	l.Info().Msgf("Total Startup Time: %s", time.Since(startTime))
 	// Listen and Server in 0.0.0.0:8080
 	l.Info().
+		Dur("total_startup_time", time.Since(startTime)).
 		Str("port", port).
 		Msgf("Starting App Server on port '%s'", port)
 	r.Run(":" + port)

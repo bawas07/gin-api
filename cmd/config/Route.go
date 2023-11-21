@@ -10,11 +10,18 @@ import (
 
 var db = make(map[string]string)
 
-func ApiRouteV1(r *gin.RouterGroup, log *zerolog.Logger) {
+func ApiRouteV1(
+	r *gin.RouterGroup,
+	log *zerolog.Logger,
+	controller *controller.ControllerList,
+) {
 	v1 := r.Group("/v1")
 
-	indexController := controller.IndexController(log)
-	v1.GET("/ping", indexController.Ping)
+	// indexController := controller.NewIndexController(log)
+	// controller := LoadController(log)
+	v1.GET("/ping", controller.Index.Ping)
+
+	v1.POST("/register", controller.Auth.Register)
 
 	// Get user value
 	v1.GET("/user/:name", func(c *gin.Context) {

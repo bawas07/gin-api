@@ -7,18 +7,22 @@ import (
 	"github.com/rs/zerolog"
 )
 
-func IndexController(log *zerolog.Logger) *BaseController {
-	return &BaseController{log}
+type IndexController struct {
+	BaseController
 }
 
-func (c *BaseController) Hi(ctx *gin.Context) {
+func NewIndexController(log *zerolog.Logger) *IndexController {
+	return &IndexController{BaseController: BaseController{log: log}}
+}
+
+func (c *IndexController) Hi(ctx *gin.Context) {
 	message := "Hi There"
 
 	responses.ResponseOk(ctx, responses.ResponseData{Message: &message})
 	return
 }
 
-func (c *BaseController) Ping(ctx *gin.Context) {
+func (c *IndexController) Ping(ctx *gin.Context) {
 	message := "Pong"
 	c.log.Info().Msg("Ulalaaa")
 	responses.ResponseOk(ctx, responses.ResponseData{Message: &message})
